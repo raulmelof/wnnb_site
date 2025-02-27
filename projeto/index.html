@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wannabe Skateboarding</title>
+    <link rel="shortcut icon" href="imagens/logo.jpg">
+    <link rel="stylesheet" href="styles/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+
+
+<body>
+
+    <div id="fullbanner">
+        <img src="imagens/banner.jpg" alt="Banner">
+    </div>
+
+    <header id="header">
+        <div class="header-content">
+            <div class="logo">
+                <img src="imagens/logo.jpg" alt="Wannabe Skateboarding Logo" onclick="mostrarTodosOsProdutos(event)">
+            </div>            
+
+            <nav>
+                <ul>
+                    <li><a href="#" onclick="filtrarProdutos('camisetas', event)">Camisetas</a></li>
+                    <li><a href="#" onclick="filtrarProdutos('calças', event)">Calças</a></li>
+                    <li><a href="#" onclick="filtrarProdutos('moletons', event)">Moletons</a></li>
+                    <li><a href="#" onclick="filtrarProdutos('shapes', event)">Shapes</a></li>
+                    <li><a href="sobreALoja.html">Sobre a Loja</a></li>
+                </ul>
+            </nav>
+
+            <div class="search-icons">
+                <input type="text" id="busca" placeholder="Buscar produtos...">
+                <a href="#" onclick="redirectToLogin()"><i class="fas fa-user"></i></a>
+                <a href="#"><i class="fas fa-shopping-cart"></i></a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container" id="vitrine"></div>
+
+    <script src="js/scripts.js"></script>
+
+</body>
+
+<footer id="footer">
+    <div class="footer-section">
+        <h3>Métodos de Pagamento</h3>
+        <div class="payment-methods">
+            <img src="imagens/visa.jpg" alt="Visa">
+            <img src="imagens/mastercard.jpg" alt="Mastercard">
+            <img src="imagens/bradesco.jpg" alt="Bradesco">
+            <img src="imagens/pix.jpg" alt="Pix">
+        </div>
+    </div>
+
+    <div class="footer-section">
+        <h3>Contato</h3>
+        <p><img src="imagens/telefone.jpg" alt="Telefone"> (11) 99999-9999</p>
+        <p><img src="imagens/email.jpg" alt="E-mail"> contato@wannabeskate.com</p>
+    </div>
+
+    <div class="footer-section">
+        <h3>Redes Sociais</h3>
+        <a href="https://www.instagram.com/wannabeskateboarding/" target="_blank">
+            <img src="imagens/instagram.jpg" alt="Instagram">
+        </a>
+    </div>
+</footer>
+</html>

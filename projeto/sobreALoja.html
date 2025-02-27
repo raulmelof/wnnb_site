@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sobre a Loja</title>
+    <link rel="shortcut icon" href="imagens/logo.jpg">
+    <link rel="stylesheet" href="styles/sobreALoja.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body>
+
+    <header id="header">
+        <div class="header-content">
+            <div class="logo">
+                <a href="index.html"><img src="imagens/logo.jpg" alt="Wannabe Skateboarding Logo"></a>
+            </div>            
+
+            <nav>
+                <ul>
+                    <li><a href="#" onclick="filtrarProdutos('camisetas', event)">Camisetas</a></li>
+                    <li><a href="#" onclick="filtrarProdutos('calças', event)">Calças</a></li>
+                    <li><a href="#" onclick="filtrarProdutos('moletons', event)">Moletons</a></li>
+                    <li><a href="#" onclick="filtrarProdutos('shapes', event)">Shapes</a></li>
+                    <li><a href="sobreALoja.html">Sobre a Loja</a></li>
+                </ul>
+            </nav>
+
+            <div class="search-icons">
+                <input type="text" id="busca" placeholder="Buscar produtos...">
+                <a href="#" onclick="redirectToLogin()"><i class="fas fa-user"></i></a>
+                <a href="#"><i class="fas fa-shopping-cart"></i></a>
+            </div>
+        </div>
+    </header>
+
+    <div id="texto">
+        <h1>Sobre a Loja</h1>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce non aliquet sem. Vivamus gravida tristique porttitor. Sed interdum nibh nisi, eget aliquam tortor porta imperdiet. Praesent dictum dapibus neque, quis ultricies dolor finibus in. Donec bibendum urna eu accumsan laoreet. Nunc congue nec risus ut vulputate. Fusce placerat viverra mi ut auctor. Maecenas sit amet volutpat enim, in varius arcu. Vestibulum ultricies tortor sapien, eget tincidunt tellus malesuada a. Cras aliquet lacinia lacus eget pulvinar.</p>
+        <h1>Sobre os Eventos</h1>
+        <p>Nam mollis egestas elit, vitae tincidunt ipsum rhoncus eu. Morbi vel laoreet quam. Vestibulum vehicula non diam non ultricies. Nunc id elit laoreet, tempor enim volutpat, eleifend ante. Quisque lacinia auctor odio quis convallis. Donec semper vulputate ligula, et luctus velit accumsan vitae. Curabitur eget sapien dolor. Praesent in felis id lacus pellentesque gravida nec sit amet quam. Mauris nec consequat magna, non mollis erat. Curabitur et rhoncus mi. Praesent maximus consequat lectus, sit amet aliquam metus semper et. Mauris mollis quam et neque lacinia rhoncus. Aliquam erat volutpat. Nullam nec ipsum dolor. Vivamus tortor purus, ultrices vel ligula vel, tincidunt interdum mi.</p>
+    </div>
+
+</body>

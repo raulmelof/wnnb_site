@@ -1,0 +1,94 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f7f7f7;
+    margin-top: 0;
+}
+
+#header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    background: white;
+}
+
+body.scrolled header {
+    position: fixed;
+    top: 0;
+}
+
+header .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 50%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+header .logo img {
+    height: 45px;
+}
+
+header nav ul {
+    list-style: none;
+    display: flex;
+    gap: 25px;
+}
+
+header nav ul li {
+    display: inline;
+}
+
+header nav ul li a {
+    color: black;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 16px;
+    transition: color 0.3s;
+}
+
+header nav ul li a:hover {
+    color: #126cf3;
+}
+
+header .search-icons {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+header .search-icons input {
+    padding: 8px;
+    font-size: 14px;
+    border-radius: 20px;
+    border: none;
+    outline: none;
+}
+
+header .search-icons a {
+    color: black;
+    font-size: 20px;
+    text-decoration: none;
+}
+
+header .search-icons a:hover {
+    color: #126cf3;
+}
+
+h1 {
+    margin-left: 30%;
+    margin-right: 30%;
+    font-size: 2.5vh;
+}
+
+p {
+    margin-left: 30%;
+    margin-right: 30%;
+    font-size: 1.5vh;
+}
+
+#texto {
+    margin-top: 100px;
+}
