@@ -216,7 +216,7 @@ nav ul li a:hover::before {
 #footer {
     background-color: black;
     color: white;
-    padding: 0px 20px;
+    padding: 0px 0px;
     font-size: 14px;
     display: flex;
     justify-content: space-around;

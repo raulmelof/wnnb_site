@@ -1,32 +1,15 @@
-/*function carregarProdutos() {
-    fetch("produtos.json")
-        .then(response => response.json())
-        .then(produtos => {
-            let produtosFiltrados = produtos.filter(produto => produto.categoria === "camisetas");
-            exibirProdutos(produtosFiltrados);
-        })
-        .catch(error => {
-            console.error("Erro ao carregar produtos:", error);
-        });
-
-        window.onload = function () {
-            carregarProdutos();
-        };
-}*/
-
 function carregarProdutos() {
     fetch("produtos.json")
         .then(response => response.json())
         .then(produtos => {
-            window.todosOsProdutos = produtos; // Armazena os produtos na variável global
-            exibirProdutos(produtos); // Exibe todos os produtos inicialmente
+            window.todosOsProdutos = produtos.filter(produto => produto.categoria === "camisetas");
+            exibirProdutos(window.todosOsProdutos);
         })
         .catch(error => {
             console.error("Erro ao carregar produtos:", error);
         });
 }
 
-// Carregar produtos ao iniciar a página
 window.onload = function () {
     carregarProdutos();
 };
@@ -60,31 +43,12 @@ window.onload = function() {
     carregarProdutos();
 };
 
-/*function aplicarFiltros() {
-    const tamanhosSelecionados = [];
-    document.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
-        tamanhosSelecionados.push(checkbox.value);
-    });
-
-    const precoMaximo = parseFloat(document.getElementById('precoRange').value);
-
-    const produtosFiltrados = window.todosOsProdutos.filter(produto => {
-        const atendeTamanho = tamanhosSelecionados.length === 0 || tamanhosSelecionados.includes(produto.tamanho);
-        const atendePreco = produto.preco <= precoMaximo;
-        return atendeTamanho && atendePreco;
-    });
-
-    exibirProdutos(produtosFiltrados);
-}*/
-
 function aplicarFiltros() {
-    // Verifica se os produtos foram carregados
     if (!window.todosOsProdutos) {
         console.error("Produtos não carregados.");
         return;
     }
 
-    // Obter valores selecionados
     const tamanhosSelecionados = [];
     document.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
         tamanhosSelecionados.push(checkbox.value);
@@ -92,14 +56,12 @@ function aplicarFiltros() {
 
     const precoMaximo = parseFloat(document.getElementById('precoRange').value);
 
-    // Filtrar produtos
     const produtosFiltrados = window.todosOsProdutos.filter(produto => {
         const atendeTamanho = tamanhosSelecionados.length === 0 || tamanhosSelecionados.includes(produto.tamanho);
         const atendePreco = produto.preco <= precoMaximo;
         return atendeTamanho && atendePreco;
     });
 
-    // Exibir produtos filtrados
     exibirProdutos(produtosFiltrados);
 }
 
