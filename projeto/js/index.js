@@ -43,17 +43,6 @@ function exibirProdutos(produtos) {
 }
 
 
-function filtrarProdutos(categoria, event) {
-    if (event) event.preventDefault();
-    let produtosFiltrados = window.todosOsProdutos.filter(produto => produto.categoria === categoria);
-    exibirProdutos(produtosFiltrados);
-}
-
-function mostrarTodosOsProdutos(event) {
-    if (event) event.preventDefault();
-    exibirProdutos(window.todosOsProdutos);
-}
-
 document.getElementById("busca").addEventListener("input", function () {
     let termo = this.value.toLowerCase();
     let produtos = document.querySelectorAll(".produto");
@@ -81,7 +70,3 @@ window.addEventListener('scroll', function() {
         document.body.classList.remove('scrolled');
     }
 });
-
-function redirectToLogin() {
-    window.location.href = 'login.html';
-}
