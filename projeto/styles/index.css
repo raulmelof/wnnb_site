@@ -247,6 +247,7 @@ nav ul li a:hover::before {
     align-items: center;
     justify-content: center;
     gap: 10px;
+    margin-bottom: 0.8vh;
 }
 
 .footer-section p img {
