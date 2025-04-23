@@ -1,0 +1,6 @@
+<div id="texto">
+        <h1>Sobre a Loja</h1>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce non aliquet sem. Vivamus gravida tristique porttitor. Sed interdum nibh nisi, eget aliquam tortor porta imperdiet. Praesent dictum dapibus neque, quis ultricies dolor finibus in. Donec bibendum urna eu accumsan laoreet. Nunc congue nec risus ut vulputate. Fusce placerat viverra mi ut auctor. Maecenas sit amet volutpat enim, in varius arcu. Vestibulum ultricies tortor sapien, eget tincidunt tellus malesuada a. Cras aliquet lacinia lacus eget pulvinar.</p>
+        <h1>Sobre os Eventos</h1>
+        <p>Nam mollis egestas elit, vitae tincidunt ipsum rhoncus eu. Morbi vel laoreet quam. Vestibulum vehicula non diam non ultricies. Nunc id elit laoreet, tempor enim volutpat, eleifend ante. Quisque lacinia auctor odio quis convallis. Donec semper vulputate ligula, et luctus velit accumsan vitae. Curabitur eget sapien dolor. Praesent in felis id lacus pellentesque gravida nec sit amet quam. Mauris nec consequat magna, non mollis erat. Curabitur et rhoncus mi. Praesent maximus consequat lectus, sit amet aliquam metus semper et. Mauris mollis quam et neque lacinia rhoncus. Aliquam erat volutpat. Nullam nec ipsum dolor. Vivamus tortor purus, ultrices vel ligula vel, tincidunt interdum mi.</p>
+    </div>
