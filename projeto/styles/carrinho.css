@@ -1,6 +1,8 @@
 .container {
     margin-top: 120px;
     padding: 20px;
+    justify-content: center;
+    display: grid;
 }
 
 #carrinho-itens {
