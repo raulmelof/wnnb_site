@@ -36,7 +36,7 @@ function exibirProdutos(produtos) {
         `;
 
         div.querySelector('.imagem-container').addEventListener("click", function () {
-            window.location.href = `parts/produto.php?nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}&imagem=${encodeURIComponent(produto.imagem)}&descricao=${encodeURIComponent(produto.descricao || '')}`;
+            window.location.href = `public/produto.php?nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}&imagem=${encodeURIComponent(produto.imagem)}&descricao=${encodeURIComponent(produto.descricao || '')}`;
         });
 
         vitrine.appendChild(div);
