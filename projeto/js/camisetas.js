@@ -1,5 +1,5 @@
 function carregarProdutos() {
-    fetch("produtos.json")
+    fetch("produtos_public.json")
         .then(response => response.json())
         .then(produtos => {
             window.todosOsProdutos = produtos.filter(produto => produto.categoria === "camisetas");
@@ -32,7 +32,7 @@ function exibirProdutos(produtos) {
         `;
 
         div.addEventListener("click", function () {
-            window.location.href = `produto.html?nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}&imagem=${encodeURIComponent(produto.imagem)}&descricao=${encodeURIComponent(produto.descricao || '')}`;
+            window.location.href = `../public/produto.php?nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}&imagem=${encodeURIComponent(produto.imagem)}&descricao=${encodeURIComponent(produto.descricao || '')}`;
         });
 
         vitrine.appendChild(div);

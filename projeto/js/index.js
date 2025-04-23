@@ -26,21 +26,34 @@ function exibirProdutos(produtos) {
         div.setAttribute("data-categoria", produto.categoria);
 
         div.innerHTML = `
-            <div class="imagem-container">
+            <div class="imagem-container" style="cursor:pointer;">
                 <img src="${produto.imagem}" alt="${produto.nome}" class="imagem-normal">
                 ${produto.imagemHover ? `<img src="${produto.imagemHover}" alt="${produto.nome}" class="imagem-hover">` : ""}
             </div>
             <h3>${produto.nome}</h3>
             <p>R$ ${produto.preco.toFixed(2)}</p>
+            <button class="btn btn-primary btn-sm" onclick='adicionarAoCarrinho(${JSON.stringify(produto).replace(/'/g, "\\'")})'>Adicionar ao carrinho</button>
         `;
 
-        div.addEventListener("click", function () {
-            window.location.href = `produto.html?nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}&imagem=${encodeURIComponent(produto.imagem)}&descricao=${encodeURIComponent(produto.descricao || '')}`;
-        });        
+        div.querySelector('.imagem-container').addEventListener("click", function () {
+            window.location.href = `parts/produto.php?nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}&imagem=${encodeURIComponent(produto.imagem)}&descricao=${encodeURIComponent(produto.descricao || '')}`;
+        });
 
         vitrine.appendChild(div);
     });
 }
+
+function adicionarAoCarrinho(produto) {
+    let carrinho = JSON.parse(localStorage.getItem("carrinho")) || [];
+    
+    // Ensure the image path is correct
+    produto.imagem = produto.imagem.startsWith("http") ? produto.imagem : `projeto/imagens/${produto.imagem}`;
+    
+    carrinho.push(produto);
+    localStorage.setItem("carrinho", JSON.stringify(carrinho));
+    alert(`${produto.nome} foi adicionado ao carrinho!`);
+}
+
 
 
 document.getElementById("busca").addEventListener("input", function () {
