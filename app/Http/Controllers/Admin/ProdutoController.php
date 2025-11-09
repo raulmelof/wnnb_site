@@ -39,27 +39,42 @@ class ProdutoController extends Controller
      */
     public function store(Request $request)
     {
-        // Validação dos dados do formulário
+        // Validação dos dados principais e das variações
         $request->validate([
             'nome' => 'required|string|max:100',
-            'preco' => 'required|numeric',
-            'descricao' => 'nullable|string',
+            'preco' => 'required|numeric|min:0',
             'categoria' => 'required|string|max:50',
-            'imagem' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+            'descricao' => 'nullable|string',
+            'imagem' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'variacoes' => 'required|array|min:1', // Deve ter pelo menos uma variação
+            'variacoes.*.tamanho' => 'required|string|max:50', // Valida cada item do array
+            'variacoes.*.estoque' => 'required|integer|min:0',
         ]);
 
-        $produto = new Produto($request->all());
+        $data = $request->except('imagem', 'variacoes'); // Pega dados do produto
 
-        // Lógica para upload da imagem
         if ($request->hasFile('imagem')) {
-            // Salva a imagem em 'storage/app/public/imagens' e guarda o caminho no banco
-            $caminhoImagem = $request->file('imagem')->store('imagens', 'public');
-            $produto->imagem = $caminhoImagem;
+            $path = $request->file('imagem')->store('imagens', 'public');
+            $data['imagem'] = $path;
         }
 
-        $produto->save();
+        // Usamos uma transação para garantir que o produto e suas variações
+        // sejam criados com sucesso, ou nada seja salvo.
+        DB::transaction(function () use ($data, $request) {
+            // 1. Cria o produto principal
+            $produto = Produto::create($data);
 
-        return redirect()->route('admin.produtos.index')->with('success', 'Produto criado com sucesso!');
+            // 2. Anexa as variações ao produto
+            foreach ($request->variacoes as $variacao) {
+                $produto->variacoes()->create([
+                    'tamanho' => $variacao['tamanho'],
+                    'estoque' => $variacao['estoque'],
+                ]);
+            }
+        });
+
+        return redirect()->route('admin.produtos.index')
+                         ->with('success', 'Produto e suas variações criados com sucesso.');
     }
 
     /**
@@ -95,30 +110,58 @@ class ProdutoController extends Controller
      */
     public function update(Request $request, Produto $produto)
     {
+        // Validação similar ao 'store'
         $request->validate([
             'nome' => 'required|string|max:100',
-            'preco' => 'required|numeric',
-            'descricao' => 'nullable|string',
+            'preco' => 'required|numeric|min:0',
             'categoria' => 'required|string|max:50',
-            'imagem' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+            'descricao' => 'nullable|string',
+            'imagem' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'variacoes' => 'required|array|min:1',
+            'variacoes.*.tamanho' => 'required|string|max:50',
+            'variacoes.*.estoque' => 'required|integer|min:0',
         ]);
 
-        $dados = $request->except('imagem');
+        $data = $request->except('imagem', 'variacoes');
 
-        // Se uma nova imagem foi enviada
         if ($request->hasFile('imagem')) {
-            // Apaga a imagem antiga para não ocupar espaço
             if ($produto->imagem) {
                 Storage::disk('public')->delete($produto->imagem);
             }
-            // Salva a nova imagem
-            $caminhoImagem = $request->file('imagem')->store('imagens', 'public');
-            $dados['imagem'] = $caminhoImagem;
+            $path = $request->file('imagem')->store('imagens', 'public');
+            $data['imagem'] = $path;
         }
 
-        $produto->update($dados);
+        // Transação para segurança
+        DB::transaction(function () use ($produto, $data, $request) {
+            // 1. Atualiza os dados do produto principal
+            $produto->update($data);
 
-        return redirect()->route('admin.produtos.index')->with('success', 'Produto atualizado com sucesso!');
+            // 2. Sincroniza as Variações (o jeito complexo, mas correto)
+            $idsDasVariacoesDoForm = [];
+
+            foreach ($request->variacoes as $variacaoData) {
+                // Se a variação já tem ID, atualiza. Senão, cria.
+                $variacao = $produto->variacoes()->updateOrCreate(
+                    [
+                        'id' => $variacaoData['id'] ?? null // Procura pelo ID
+                    ],
+                    [
+                        'tamanho' => $variacaoData['tamanho'], // Dados para atualizar/criar
+                        'estoque' => $variacaoData['estoque'],
+                    ]
+                );
+                $idsDasVariacoesDoForm[] = $variacao->id; // Guarda o ID
+            }
+
+            // 3. Deleta variações antigas
+            // Se alguma variação que estava no banco não veio no formulário, ela é deletada.
+            $produto->variacoes()->whereNotIn('id', $idsDasVariacoesDoForm)->delete();
+        });
+
+
+        return redirect()->route('admin.produtos.index')
+                         ->with('success', 'Produto e suas variações atualizados com sucesso.');
     }
 
     /**
