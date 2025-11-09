@@ -3,36 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Produto;
+use App\Models\ProdutoVariacao; // Importe o novo model
 use Illuminate\Http\Request;
 
 class CartController extends Controller
 {
-    // O método add() que já fizemos...
-    public function add(Request $request, Produto $produto)
-    {
-        $cart = $request->session()->get('cart', []);
-
-        // Verifica se o produto já está no carrinho
-        if(isset($cart[$produto->id])) {
-            // Se sim, incrementa a quantidade
-            $cart[$produto->id]['quantidade']++;
-        } else {
-            // Se não, adiciona o produto com quantidade 1
-            $cart[$produto->id] = [
-                "nome" => $produto->nome,
-                "preco" => $produto->preco,
-                "imagem" => $produto->imagem,
-                "quantidade" => 1
-            ];
-        }
-
-        // Salva o carrinho atualizado de volta na sessão
-        $request->session()->put('cart', $cart);
-
-        return redirect()->back()->with('success', 'Produto adicionado ao carrinho!');
-    }
-
-    // O método index() que já fizemos...
+    /**
+     * Mostra a página do carrinho.
+     */
     public function index()
     {
         $cart = session('cart', []);
@@ -46,41 +24,99 @@ class CartController extends Controller
     }
 
     /**
-     * Remove um item do carrinho.
+     * Adiciona uma VARIAÇÃO de produto ao carrinho.
      */
-    public function remove(Request $request, $produto_id)
+    public function add(Request $request)
     {
-        // Pega o carrinho da sessão
-        $cart = $request->session()->get('cart');
+        // Validação dos dados do formulário
+        $request->validate([
+            'produto_id' => 'required|exists:produtos,id',
+            'variacao_id' => 'required|exists:produto_variacoes,id',
+        ]);
 
-        // Verifica se o carrinho existe e se o item está nele
-        if(isset($cart[$produto_id])) {
-            // Remove o item do array do carrinho usando a função unset do PHP
-            unset($cart[$produto_id]);
+        $produto = Produto::find($request->produto_id);
+        $variacao = ProdutoVariacao::find($request->variacao_id);
 
-            // Salva o carrinho atualizado de volta na sessão
-            $request->session()->put('cart', $cart);
+        // Garante que a variação pertence ao produto (segurança)
+        if ($variacao->produto_id != $produto->id) {
+            return redirect()->back()->with('error', 'Erro: A variação não pertence a este produto.');
         }
 
-        // Redireciona de volta para a página do carrinho com uma mensagem
-        return redirect()->route('cart.index')->with('success', 'Produto removido do carrinho.');
+        // Pega o carrinho da sessão
+        $cart = $request->session()->get('cart', []);
+        
+        // A ID única no carrinho agora é a ID DA VARIAÇÃO
+        $idDaVariacao = $variacao->id;
+
+        // Verifica se o item já está no carrinho
+        if (isset($cart[$idDaVariacao])) {
+            $novaQuantidade = $cart[$idDaVariacao]['quantidade'] + 1;
+        } else {
+            $novaQuantidade = 1;
+        }
+
+        // --- VERIFICAÇÃO DE ESTOQUE ---
+        if ($novaQuantidade > $variacao->estoque) {
+            return redirect()->back()->with('error', 'Desculpe, não há estoque suficiente para este item.');
+        }
+
+        // Adiciona ou atualiza o item no carrinho
+        $cart[$idDaVariacao] = [
+            "produto_id" => $produto->id,
+            "nome" => $produto->nome,
+            "tamanho" => $variacao->tamanho, // Guarda o tamanho
+            "preco" => $produto->preco, // O preço ainda vem do produto "pai"
+            "imagem" => $produto->imagem,
+            "quantidade" => $novaQuantidade,
+        ];
+
+        $request->session()->put('cart', $cart);
+
+        return redirect()->route('cart.index')->with('success', 'Produto adicionado ao carrinho!');
     }
 
-    public function update(Request $request, $produto_id)
+    /**
+     * Atualiza a quantidade de uma VARIAÇÃO no carrinho.
+     */
+    public function update(Request $request, $variacao_id)
     {
         $cart = $request->session()->get('cart');
 
-        // Validação para garantir que a quantidade é um número válido e maior que zero
         $request->validate([
             'quantidade' => 'required|integer|min:1',
         ]);
+        
+        // Verifica se o item existe no carrinho
+        if (isset($cart[$variacao_id])) {
+            
+            // --- VERIFICAÇÃO DE ESTOQUE ---
+            $variacao = ProdutoVariacao::find($variacao_id);
+            if ($request->quantidade > $variacao->estoque) {
+                return redirect()->route('cart.index')->with('error', 'Desculpe, não há estoque suficiente para esta quantidade.');
+            }
 
-        // Se o item existir no carrinho, atualiza sua quantidade
-        if(isset($cart[$produto_id])) {
-            $cart[$produto_id]['quantidade'] = $request->quantidade;
+            // Atualiza a quantidade
+            $cart[$variacao_id]['quantidade'] = $request->quantidade;
+            $request->session()->put('cart', $cart);
+
+            return redirect()->route('cart.index')->with('success', 'Quantidade atualizada!');
+        }
+
+        return redirect()->route('cart.index')->with('error', 'Item não encontrado no carrinho.');
+    }
+
+    /**
+     * Remove uma VARIAÇÃO do carrinho.
+     */
+    public function remove(Request $request, $variacao_id)
+    {
+        $cart = $request->session()->get('cart');
+
+        if(isset($cart[$variacao_id])) {
+            unset($cart[$variacao_id]);
             $request->session()->put('cart', $cart);
         }
 
-        return redirect()->route('cart.index')->with('success', 'Quantidade atualizada com sucesso!');
+        return redirect()->route('cart.index')->with('success', 'Produto removido do carrinho.');
     }
 }

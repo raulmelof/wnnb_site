@@ -34,15 +34,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/carrinho', [CartController::class, 'index'])->name('cart.index');
-    Route::post('/carrinho/adicionar/{produto}', [CartController::class, 'add'])->name('cart.add');
-    Route::post('/carrinho/remover/{produto_id}', [CartController::class, 'remove'])->name('cart.remove');
+    Route::post('/carrinho/adicionar', [CartController::class, 'add'])->name('cart.add');
+    Route::post('/carrinho/remover/{variacao_id}', [CartController::class, 'remove'])->name('cart.remove');
+    Route::patch('/carrinho/atualizar/{variacao_id}', [CartController::class, 'update'])->name('cart.update');
 
     Route::prefix('meus-pedidos')->name('meus-pedidos.')->group(function () {
         Route::get('/', [PedidoController::class, 'index'])->name('index');
         Route::get('/{pedido}', [PedidoController::class, 'show'])->name('show');
     });
-
-    Route::patch('/carrinho/atualizar/{produto_id}', [CartController::class, 'update'])->name('cart.update');
 
     // Rota que o botão "Finalizar Compra" do carrinho irá chamar
     Route::post('/checkout/iniciar', [CheckoutController::class, 'iniciarPagamento'])

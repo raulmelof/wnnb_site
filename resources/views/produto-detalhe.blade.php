@@ -18,15 +18,39 @@
 
                 <p>{{ $produto->descricao }}</p>
 
-                <div class="d-grid gap-2 mt-4">
-                    {{-- Substitua o <button> antigo por este formulário --}}
-                    <form action="{{ route('cart.add', $produto->id) }}" method="POST">
-                        @csrf {{-- Diretiva de segurança obrigatória do Laravel --}}
-                        <button type="submit" class="btn btn-primary btn-lg w-100">Adicionar ao Carrinho</button>
-                    </form>
-                </div>
+                {{-- Formulário de Adicionar ao Carrinho --}}
+                <form action="{{ route('cart.add') }}" method="POST" id="cart-form">
+                    @csrf
+                    {{-- Input escondido para o ID do produto (para o CartController) --}}
+                    <input type="hidden" name="produto_id" value="{{ $produto->id }}">
 
-                {{-- Aqui usamos o nosso novo componente anônimo sem parâmetros! --}}
+                    <div class="mb-3">
+                        <label for="variacao" class="form-label"><strong>Escolha o Tamanho:</strong></label>
+                        <select class="form-select" id="variacao" name="variacao_id" required>
+                            <option value="" selected disabled>Selecione um tamanho</option>
+                            
+                            {{-- Loop para mostrar apenas tamanhos com estoque --}}
+                            @foreach ($produto->variacoes as $variacao)
+                                @if ($variacao->estoque > 0)
+                                    <option value="{{ $variacao->id }}">
+                                        {{ $variacao->tamanho }} ({{ $variacao->estoque }} em estoque)
+                                    </option>
+                                @else
+                                    <option value="{{ $variacao->id }}" disabled>
+                                        {{ $variacao->tamanho }} (Esgotado)
+                                    </option>
+                                @endif
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg w-100" id="add-to-cart-btn">
+                            Adicionar ao Carrinho
+                        </button>
+                    </div>
+                </form>
+
                 <div class="mt-3">
                     <x-botao-voltar />
                 </div>
