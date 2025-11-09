@@ -22,7 +22,13 @@
                             <td>
                                 <div class="d-flex align-items-center">
                                     <img src="{{ asset('storage/' . $details['imagem']) }}" width="50" height="50" class="me-3 rounded">
-                                    <span>{{ $details['nome'] }}</span>
+                                    <div>
+                                        <span class="fw-bold">{{ $details['nome'] }}</span>
+                                        {{-- LINHA ADICIONADA: Mostra o tamanho --}}
+                                        <span class="d-block text-muted small">
+                                            Tamanho: {{ $details['tamanho'] }}
+                                        </span>
+                                    </div>
                                 </div>
                             </td>
                             <td>R$ {{ number_format($details['preco'], 2, ',', '.') }}</td>
