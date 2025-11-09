@@ -4,16 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Pedido;
 use App\Models\Produto;
+use App\Models\ProdutoVariacao;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http; // Importante para fazer a chamada de API
+use Illuminate\Support\Facades\Http;
+use Exception;
 
 class CheckoutController extends Controller
 {
     /**
      * PASSO 2 (Doc InfinitePay): Criar o Pedido localmente
      * e redirecionar para o link de pagamento.
+     * AGORA INCLUI VERIFICAÇÃO E DECREMENTO DE ESTOQUE.
      */
     public function iniciarPagamento(Request $request)
     {
@@ -24,77 +27,83 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('error', 'Seu carrinho está vazio.');
         }
 
-        // --- 1. Criar o Pedido no Banco de Dados ---
         $pedido = null;
         $total = 0;
         $items_para_infinitepay = [];
 
         try {
-            // Usamos uma transação para garantir que o pedido e os itens 
-            // sejam criados juntos, ou nada seja criado se der erro.
+            // A transação garante que tudo abaixo aconteça, ou nada aconteça.
             DB::transaction(function () use ($cart, $user, &$pedido, &$total, &$items_para_infinitepay) {
                 
-                // Calcula o total e formata os itens para a API
+                // --- 1. VERIFICAR ESTOQUE (NOVO) ---
+                foreach ($cart as $variacao_id => $details) {
+                    $variacao = ProdutoVariacao::find($variacao_id);
+                    if ($details['quantidade'] > $variacao->estoque) {
+                        // Se não houver estoque, lança um erro e para a transação
+                        throw new Exception("Estoque insuficiente para o produto {$details['nome']} ({$details['tamanho']}).");
+                    }
+                }
+
+                // --- 2. CALCULAR TOTAL E MONTAR ITENS DA API ---
                 foreach ($cart as $id => $details) {
                     $subtotal = $details['preco'] * $details['quantidade'];
                     $total += $subtotal;
 
                     $items_para_infinitepay[] = [
-                        'name' => $details['nome'],
-                        // Preço deve ser em CENTAVOS para a InfinitePay
+                        'name' => $details['nome'] . ' (Tamanho: ' . $details['tamanho'] . ')',
                         'price' => (int) ($details['preco'] * 100), 
                         'quantity' => $details['quantidade'],
                     ];
                 }
 
-                // Cria o Pedido com o novo status
+                // --- 3. CRIAR O PEDIDO ---
                 $pedido = Pedido::create([
                     'user_id' => $user->id,
                     'total' => $total,
-                    'status' => 'aguardando_pagamento', // Nosso novo status
+                    'status' => 'aguardando_pagamento',
                 ]);
 
-                // Associa os produtos ao pedido (tabela pedido_produtos)
-                foreach ($cart as $id => $details) {
-                    $pedido->produtos()->attach($id, [
+                // --- 4. ASSOCIAR PRODUTOS E DECREMENTAR ESTOQUE (MODIFICADO) ---
+                foreach ($cart as $variacao_id => $details) {
+                    
+                    // Associa o pedido à variação na tabela 'pedido_produtos'
+                    $pedido->produtos()->attach($details['produto_id'], [
+                        'produto_variacao_id' => $variacao_id, // A NOVA COLUNA
                         'quantidade' => $details['quantidade'],
                         'preco' => $details['preco']
                     ]);
+                    
+                    // Decrementa o estoque (NOVO)
+                    $variacao = ProdutoVariacao::find($variacao_id);
+                    $variacao->decrement('estoque', $details['quantidade']);
                 }
             });
 
-        } catch (\Exception $e) {
-            // TODO: Logar o erro real ($e->getMessage()) em um arquivo de log
-            
-            // Se algo der errado (ex: erro de banco), volta ao carrinho
-            return redirect()->route('cart.index')->with('error', 'Erro ao processar seu pedido. Tente novamente.');
+        } catch (Exception $e) {
+            // Se algo der errado (especialmente nosso erro de estoque),
+            // o usuário é redirecionado com a mensagem de erro.
+            return redirect()->route('cart.index')->with('error', $e->getMessage());
         }
 
-        // --- 2. Limpar o Carrinho ---
-        // Fazemos isso *depois* que o pedido foi criado com sucesso.
+        // --- 5. LIMPAR O CARRINHO ---
         $request->session()->forget('cart');
 
-        // --- 3. Montar a URL de Pagamento (Passo 2 da Doc) ---
-
+        // --- 6. MONTAR A URL DE PAGAMENTO (Passo 2 da Doc) ---
         $infinitepay_handle = 'guilhermecfrancellino'; 
 
         $params = [
             'handle' => $infinitepay_handle,
             'items' => json_encode($items_para_infinitepay),
-            // Usamos o ID do nosso pedido como 'order_nsu'
             'order_nsu' => $pedido->id, 
-            // O Laravel gera a URL completa para o callback
             'redirect_url' => route('checkout.callback'), 
             'customer_name' => $user->name,
             'customer_email' => $user->email,
         ];
-
-        // Constrói a query string (ex: items=[...]&order_nsu=123&...)
+        
         $query_string = http_build_query($params);
-
         $infinitepay_url = "https://checkout.infinitepay.io/{$infinitepay_handle}?{$query_string}";
 
-        // --- 4. Redirecionar o Usuário ---
+        // --- 7. REDIRECIONAR O USUÁRIO ---
         return redirect()->away($infinitepay_url);
     }
 
@@ -104,28 +113,29 @@ class CheckoutController extends Controller
      */
     public function processarCallback(Request $request)
     {
-        // 1. Receber os dados do callback (Passo 3 da Doc)
         $order_nsu = $request->input('order_nsu');
         $transaction_id = $request->input('transaction_id');
         $capture_method = $request->input('capture_method');
         $receipt_url = $request->input('receipt_url');
         $slug = $request->input('slug');
 
-        // 2. Encontrar o pedido no nosso banco
         $pedido = Pedido::find($order_nsu);
 
         if (!$pedido) {
-            // Logar o erro ou lidar com pedido não encontrado
             return redirect()->route('home')->with('error', 'Pedido não encontrado.');
         }
 
-        // Evita que o pedido seja processado duas vezes
+        // Se o pedido já foi pago, apenas redireciona
         if ($pedido->status === 'pago') {
              return redirect()->route('checkout.sucesso', ['pedido' => $pedido->id]);
         }
+
+        // Se o pedido falhou ou foi cancelado, não tenta processar de novo
+        if (in_array($pedido->status, ['falhou', 'cancelado'])) {
+            return redirect()->route('cart.index')->with('error', 'O pagamento deste pedido falhou ou foi cancelado.');
+        }
         
-        // 3. Verificar o Pagamento (Passo 4 da Doc)
-        
+        // --- VERIFICAR PAGAMENTO (Passo 4 da Doc) ---
         $infinitepay_handle = 'guilhermecfrancellino'; 
 
         try {
@@ -138,9 +148,9 @@ class CheckoutController extends Controller
 
             $data = $response->json();
 
-            // 4. Atualizar o Pedido
+            // --- ATUALIZAR PEDIDO ---
             if (isset($data['success']) && $data['success'] === true && isset($data['paid']) && $data['paid'] === true) {
-                // SUCESSO! O pagamento foi confirmado.
+                // SUCESSO!
                 $pedido->update([
                     'status' => 'pago',
                     'transaction_id' => $transaction_id,
@@ -149,17 +159,17 @@ class CheckoutController extends Controller
                     'infinitepay_slug' => $slug,
                 ]);
 
-                // Redireciona para a página de sucesso
                 return redirect()->route('checkout.sucesso', ['pedido' => $pedido->id]);
 
             } else {
                 // FALHA! O pagamento não foi confirmado.
                 $pedido->update(['status' => 'falhou']);
+                // TODO: Restaurar o estoque (veja nota abaixo)
                 return redirect()->route('cart.index')->with('error', 'O pagamento falhou ou foi cancelado.');
             }
 
-        } catch (\Exception $e) {
-            // Lidar com erro na chamada da API
+        } catch (Exception $e) {
+            // Lidar com erro na chamada da API de verificação
             return redirect()->route('home')->with('error', 'Erro ao verificar o pagamento. Contate o suporte.');
         }
     }
@@ -169,12 +179,10 @@ class CheckoutController extends Controller
      */
     public function mostrarSucesso(Pedido $pedido)
     {
-        // Garante que o usuário só veja seus próprios pedidos
         if ($pedido->user_id !== Auth::id()) {
             abort(403);
         }
 
-        // Vamos criar esta view no próximo passo
         return view('checkout.sucesso', ['pedido' => $pedido]);
     }
 }
