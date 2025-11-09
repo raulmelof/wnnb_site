@@ -46,7 +46,7 @@
                         <input class="form-control" type="file" id="imagem" name="imagem">
                         @if ($produto->imagem)
                             <small class="text-muted d-block mt-2">Imagem atual:</small>
-                            <img src="{{ asset('storage/'G . $produto->imagem) }}" alt="{{ $produto->nome }}" height="100">
+                            <img src="{{ asset('storage/' . $produto->imagem) }}" alt="{{ $produto->nome }}" height="100">
                         @endif
                     </div>
                 </div>

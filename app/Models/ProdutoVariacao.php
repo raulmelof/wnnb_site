@@ -9,6 +9,11 @@ class ProdutoVariacao extends Model
 {
     use HasFactory;
 
+    /**
+     * Informa ao Laravel o nome correto da tabela.
+     */
+    protected $table = 'produto_variacoes';
+
     protected $fillable = [
         'produto_id',
         'tamanho',

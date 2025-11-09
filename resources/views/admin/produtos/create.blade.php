@@ -30,9 +30,9 @@
                         <input type="text" class="form-control" id="nome" name="nome" value="{{ old('nome') }}" required>
                     </div>
                     <div class="mb-3">
-                        <label for="preco" class="form-label">Preço (Base)</label>
+                        <label for="preco" class="form-label">Preço</label>
                         <input type="number" step="0.01" class="form-control" id="preco" name="preco" value="{{ old('preco') }}" required>
-                        <small class="text-muted">Este é o preço base do produto. Se os tamanhos tiverem preços diferentes, implementaremos isso no futuro.</small>
+                        <!--<small class="text-muted">Este é o preço base do produto. Se os tamanhos tiverem preços diferentes, implementaremos isso no futuro.</small>-->
                     </div>
                     <div class="mb-3">
                         <label for="categoria" class="form-label">Categoria</label>
