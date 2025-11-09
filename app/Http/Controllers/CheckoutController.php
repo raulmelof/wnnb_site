@@ -32,14 +32,12 @@ class CheckoutController extends Controller
         $items_para_infinitepay = [];
 
         try {
-            // A transação garante que tudo abaixo aconteça, ou nada aconteça.
             DB::transaction(function () use ($cart, $user, &$pedido, &$total, &$items_para_infinitepay) {
                 
-                // --- 1. VERIFICAR ESTOQUE (NOVO) ---
+                // --- 1. VERIFICAR ESTOQUE (MANTIDO) ---
                 foreach ($cart as $variacao_id => $details) {
                     $variacao = ProdutoVariacao::find($variacao_id);
                     if ($details['quantidade'] > $variacao->estoque) {
-                        // Se não houver estoque, lança um erro e para a transação
                         throw new Exception("Estoque insuficiente para o produto {$details['nome']} ({$details['tamanho']}).");
                     }
                 }
@@ -60,37 +58,30 @@ class CheckoutController extends Controller
                 $pedido = Pedido::create([
                     'user_id' => $user->id,
                     'total' => $total,
-                    'status' => 'aguardando_pagamento',
+                    'status' => 'aguardando_pagamento', // Status inicial
                 ]);
 
-                // --- 4. ASSOCIAR PRODUTOS E DECREMENTAR ESTOQUE (MODIFICADO) ---
+                // --- 4. ASSOCIAR PRODUTOS (SEM DECREMENTAR ESTOQUE) ---
                 foreach ($cart as $variacao_id => $details) {
-                    
-                    // Associa o pedido à variação na tabela 'pedido_produtos'
                     $pedido->produtos()->attach($details['produto_id'], [
-                        'produto_variacao_id' => $variacao_id, // A NOVA COLUNA
+                        'produto_variacao_id' => $variacao_id,
                         'quantidade' => $details['quantidade'],
                         'preco' => $details['preco']
                     ]);
                     
-                    // Decrementa o estoque (NOVO)
-                    $variacao = ProdutoVariacao::find($variacao_id);
-                    $variacao->decrement('estoque', $details['quantidade']);
+                    // A LINHA DE DECREMENT FOI REMOVIDA DAQUI
                 }
             });
 
         } catch (Exception $e) {
-            // Se algo der errado (especialmente nosso erro de estoque),
-            // o usuário é redirecionado com a mensagem de erro.
             return redirect()->route('cart.index')->with('error', $e->getMessage());
         }
 
         // --- 5. LIMPAR O CARRINHO ---
         $request->session()->forget('cart');
 
-        // --- 6. MONTAR A URL DE PAGAMENTO (Passo 2 da Doc) ---
+        // --- 6. MONTAR A URL DE PAGAMENTO ---
         $infinitepay_handle = 'guilhermecfrancellino'; 
-
         $params = [
             'handle' => $infinitepay_handle,
             'items' => json_encode($items_para_infinitepay),
@@ -99,7 +90,6 @@ class CheckoutController extends Controller
             'customer_name' => $user->name,
             'customer_email' => $user->email,
         ];
-        
         $query_string = http_build_query($params);
         $infinitepay_url = "https://checkout.infinitepay.io/{$infinitepay_handle}?{$query_string}";
 
@@ -125,17 +115,15 @@ class CheckoutController extends Controller
             return redirect()->route('home')->with('error', 'Pedido não encontrado.');
         }
 
-        // Se o pedido já foi pago, apenas redireciona
-        if ($pedido->status === 'pago') {
-             return redirect()->route('checkout.sucesso', ['pedido' => $pedido->id]);
+        // Se o pedido já foi processado (pago ou falhou), apenas redireciona
+        if ($pedido->status !== 'aguardando_pagamento') {
+             if ($pedido->status === 'pago') {
+                return redirect()->route('checkout.sucesso', ['pedido' => $pedido->id]);
+             } else {
+                return redirect()->route('cart.index')->with('error', 'O pagamento deste pedido falhou ou foi cancelado.');
+             }
         }
 
-        // Se o pedido falhou ou foi cancelado, não tenta processar de novo
-        if (in_array($pedido->status, ['falhou', 'cancelado'])) {
-            return redirect()->route('cart.index')->with('error', 'O pagamento deste pedido falhou ou foi cancelado.');
-        }
-        
-        // --- VERIFICAR PAGAMENTO (Passo 4 da Doc) ---
         $infinitepay_handle = 'guilhermecfrancellino'; 
 
         try {
@@ -148,28 +136,65 @@ class CheckoutController extends Controller
 
             $data = $response->json();
 
-            // --- ATUALIZAR PEDIDO ---
             if (isset($data['success']) && $data['success'] === true && isset($data['paid']) && $data['paid'] === true) {
-                // SUCESSO!
-                $pedido->update([
-                    'status' => 'pago',
-                    'transaction_id' => $transaction_id,
-                    'payment_method' => $capture_method,
-                    'receipt_url' => $receipt_url,
-                    'infinitepay_slug' => $slug,
-                ]);
+                
+                // SUCESSO! PAGAMENTO APROVADO
+                // AGORA VAMOS VERIFICAR O ESTOQUE E DECREMENTAR
+                
+                try {
+                    DB::transaction(function () use ($pedido, $transaction_id, $capture_method, $receipt_url, $slug) {
+                        
+                        // Encontra os itens do pedido
+                        $itensDoPedido = DB::table('pedido_produtos')
+                                           ->where('pedido_id', $pedido->id)
+                                           ->get();
 
+                        // 1. CHECA O ESTOQUE NOVAMENTE (Proteção contra race condition)
+                        foreach ($itensDoPedido as $item) {
+                            $variacao = ProdutoVariacao::find($item->produto_variacao_id);
+                            if ($item->quantidade > $variacao->estoque) {
+                                throw new Exception("Ocorreu um erro. O produto {$variacao->produto->nome} ({$variacao->tamanho}) não possui mais estoque.");
+                            }
+                        }
+
+                        // 2. DECREMENTA O ESTOQUE
+                        foreach ($itensDoPedido as $item) {
+                            $variacao = ProdutoVariacao::find($item->produto_variacao_id);
+                            $variacao->decrement('estoque', $item->quantidade);
+                        }
+
+                        // 3. ATUALIZA O PEDIDO
+                        $pedido->update([
+                            'status' => 'pago',
+                            'transaction_id' => $transaction_id,
+                            'payment_method' => $capture_method,
+                            'receipt_url' => $receipt_url,
+                            'infinitepay_slug' => $slug,
+                        ]);
+                    });
+
+                } catch (Exception $e) {
+                    // O pagamento foi APROVADO, mas o ESTOQUE FALHOU (Oversell)
+                    // Este é um cenário crítico. O pedido é marcado como 'falhou'
+                    // e o suporte deve ser notificado para estornar o cliente.
+                    $pedido->update(['status' => 'falhou']);
+                    // TODO: Notificar o administrador sobre o erro de oversell
+                    return redirect()->route('home')->with('error', 'Pagamento aprovado, mas falha ao reservar estoque. Contate o suporte.');
+                }
+
+                // Redireciona para o sucesso
                 return redirect()->route('checkout.sucesso', ['pedido' => $pedido->id]);
 
             } else {
+                
                 // FALHA! O pagamento não foi confirmado.
+                // Apenas atualiza o status. Não é necessário restaurar estoque
+                // pois ele nunca foi removido.
                 $pedido->update(['status' => 'falhou']);
-                // TODO: Restaurar o estoque (veja nota abaixo)
                 return redirect()->route('cart.index')->with('error', 'O pagamento falhou ou foi cancelado.');
             }
 
         } catch (Exception $e) {
-            // Lidar com erro na chamada da API de verificação
             return redirect()->route('home')->with('error', 'Erro ao verificar o pagamento. Contate o suporte.');
         }
     }
