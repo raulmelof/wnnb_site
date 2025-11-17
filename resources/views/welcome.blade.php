@@ -24,7 +24,7 @@
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
             @forelse ($produtos as $produto)
                 <div class="col">
-                    <x-produto-card :produto="$produto" />
+                    <x-produto-card :produto="$produto" :estoque="$produto->total_estoque" />
                 </div>
             @empty
                 <div class="col">

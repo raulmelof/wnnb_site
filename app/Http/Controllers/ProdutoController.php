@@ -14,10 +14,16 @@ class ProdutoController extends Controller
      */
     public function index()
     {
-        // Apenas pega todos os produtos. Mais simples!
-        $produtos = Produto::all();
+        // 1. Pega todos os produtos, já carregando suas variações
+        $produtos = Produto::with('variacoes')->get();
+
+        // 2. Verifica o estoque de cada um
+        // Estamos adicionando um novo atributo 'total_estoque' ao objeto do produto
+        $produtos->each(function ($produto) {
+            $produto->total_estoque = $produto->variacoes->sum('estoque');
+        });
         
-        // Retorna a view 'welcome' e passa a variável 'produtos' para ela
+        // 3. Retorna a view 'welcome' e passa os produtos
         return view('welcome', ['produtos' => $produtos]);
     }
 
