@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Produto;
-use App\Models\ProdutoVariacao; // Importe o novo model
+use App\Models\ProdutoVariacao;
 use Illuminate\Http\Request;
+use App\Services\CorreiosService;
 
 class CartController extends Controller
 {
@@ -118,5 +119,90 @@ class CartController extends Controller
         }
 
         return redirect()->route('cart.index')->with('success', 'Produto removido do carrinho.');
+    }
+
+    /**
+     * Calcula o frete (Correios Manual + Regra de Guarulhos)
+     */
+    public function calcularFrete(Request $request)
+    {
+        $request->validate([
+            'cep' => 'required|string|size:8',
+        ]);
+
+        $cepDestino = $request->cep;
+        $cepOrigem = '07072010'; // Guarulhos (Exemplo)
+
+        $cart = session('cart', []);
+
+        if (empty($cart)) {
+            return response()->json(['erro' => 'Carrinho vazio.'], 400);
+        }
+
+        // --- 1. PREPARAR O PACOTE ---
+        $pesoTotal = 0;
+        $alturaTotal = 0;
+        $larguraMax = 0;
+        $comprimentoMax = 0;
+
+        foreach ($cart as $item) {
+            // Precisamos pegar o produto pai para ver as dimensões
+            // Como salvamos 'produto_id' no carrinho, podemos usar:
+            $produto = Produto::find($item['produto_id']);
+            
+            $pesoItem = $produto->peso ?? 0.300;
+            $alturaItem = $produto->altura ?? 5;
+            $larguraItem = $produto->largura ?? 20;
+            $comprimentoItem = $produto->comprimento ?? 20;
+
+            $quantidade = $item['quantidade'];
+
+            $pesoTotal += $pesoItem * $quantidade;
+            $alturaTotal += $alturaItem * $quantidade; // Empilha alturas
+            
+            if ($larguraItem > $larguraMax) $larguraMax = $larguraItem;
+            if ($comprimentoItem > $comprimentoMax) $comprimentoMax = $comprimentoItem;
+        }
+
+        $opcoesDeFrete = [];
+
+        // --- 2. CONSULTAR CORREIOS (Via Nosso Service) ---
+        try {
+            $correiosService = new CorreiosService();
+            $opcoesDeFrete = $correiosService->calcular(
+                $cepOrigem,
+                $cepDestino,
+                $pesoTotal,
+                $alturaTotal,
+                $larguraMax,
+                $comprimentoMax
+            );
+
+        } catch (\Exception $e) {
+            // Falha silenciosa
+        }
+
+        // --- 3. REGRA DE GUARULHOS (ViaCEP) ---
+        try {
+            $response = Http::get("https://viacep.com.br/ws/{$cepDestino}/json/");
+            $dadosEndereco = $response->json();
+
+            // Se for Guarulhos, adiciona a opção Local no INÍCIO do array
+            if (isset($dadosEndereco['localidade']) && $dadosEndereco['localidade'] === 'Guarulhos') {
+                array_unshift($opcoesDeFrete, [
+                    'nome' => 'A Combinar / Uber Flash / Retirada',
+                    'valor' => 0.00,
+                    'prazo' => 'Combinar após pagamento',
+                    'codigo' => 'local'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            // Falha silenciosa
+        }
+
+        return response()->json([
+            'opcoes' => $opcoesDeFrete
+        ]);
     }
 }

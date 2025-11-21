@@ -22,6 +22,8 @@ class CheckoutController extends Controller
     {
         $cart = $request->session()->get('cart', []);
         $user = Auth::user();
+        $freteNome = $request->input('frete_tipo');
+        $freteValor = (float) $request->input('frete_valor', 0);
 
         if (empty($cart)) {
             return redirect()->route('cart.index')->with('error', 'Seu carrinho está vazio.');
@@ -53,12 +55,24 @@ class CheckoutController extends Controller
                         'quantity' => $details['quantidade'],
                     ];
                 }
+                
+                // Adiciona o frete como um "item" para a InfinitePay
+                // Isso garante que o valor total bata com o valor cobrado
+                if ($freteValor > 0) {
+                    $total += $freteValor; // Soma ao total do banco
+
+                    $items_para_infinitepay[] = [
+                        'name' => "Frete: $freteNome",
+                        'price' => (int) ($freteValor * 100), // Centavos
+                        'quantity' => 1,
+                    ];
+                }
 
                 // --- 3. CRIAR O PEDIDO ---
                 $pedido = Pedido::create([
                     'user_id' => $user->id,
                     'total' => $total,
-                    'status' => 'aguardando_pagamento', // Status inicial
+                    'status' => 'aguardando_pagamento',
                 ]);
 
                 // --- 4. ASSOCIAR PRODUTOS (SEM DECREMENTAR ESTOQUE) ---
