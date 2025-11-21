@@ -65,6 +65,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('/pedidos/{pedido}', [AdminPedidoController::class, 'show'])->name('pedidos.show');
     Route::put('/pedidos/{pedido}', [AdminPedidoController::class, 'update'])->name('pedidos.update');
+
+    Route::resource('cupons', App\Http\Controllers\Admin\CupomController::class);
 });
 
 // Arquivo que contém as rotas de login, registro, logout, etc.

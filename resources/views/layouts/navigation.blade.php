@@ -55,7 +55,6 @@
 
                     @if(Auth::user()->nivel_acesso == 'admin')
                         <li class="nav-item">
-                            {{-- Adicionei classes do Bootstrap para destacar o link --}}
                             <a class="nav-link fw-bold text-danger" href="{{ route('admin.produtos.index') }}">
                                 Gerenciar Produtos
                             </a>
@@ -63,6 +62,11 @@
                         <li class="nav-item">
                             <a class="nav-link fw-bold" href="{{ route('admin.pedidos.index') }}">
                                 Gerenciar Pedidos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link fw-bold text-success" href="{{ route('admin.cupons.index') }}">
+                                Gerenciar Cupons
                             </a>
                         </li>
                     @endif
