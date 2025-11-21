@@ -22,8 +22,13 @@ class CheckoutController extends Controller
     {
         $cart = $request->session()->get('cart', []);
         $user = Auth::user();
+        
+        // Dados do Frete
         $freteNome = $request->input('frete_tipo');
         $freteValor = (float) $request->input('frete_valor', 0);
+        
+        // Dados do Cupom (Pegamos da sessão, pois é mais seguro)
+        $dadosCupom = session('cupom'); // Pode ser null
 
         if (empty($cart)) {
             return redirect()->route('cart.index')->with('error', 'Seu carrinho está vazio.');
@@ -34,9 +39,9 @@ class CheckoutController extends Controller
         $items_para_infinitepay = [];
 
         try {
-            DB::transaction(function () use ($cart, $user, &$pedido, &$total, &$items_para_infinitepay) {
+            DB::transaction(function () use ($cart, $user, &$pedido, &$total, &$items_para_infinitepay, $freteValor, $freteNome, $dadosCupom) {
                 
-                // --- 1. VERIFICAR ESTOQUE (MANTIDO) ---
+                // 1. Verificar Estoque
                 foreach ($cart as $variacao_id => $details) {
                     $variacao = ProdutoVariacao::find($variacao_id);
                     if ($details['quantidade'] > $variacao->estoque) {
@@ -44,7 +49,7 @@ class CheckoutController extends Controller
                     }
                 }
 
-                // --- 2. CALCULAR TOTAL E MONTAR ITENS DA API ---
+                // 2. Calcular Itens
                 foreach ($cart as $id => $details) {
                     $subtotal = $details['preco'] * $details['quantidade'];
                     $total += $subtotal;
@@ -56,34 +61,46 @@ class CheckoutController extends Controller
                     ];
                 }
                 
-                // Adiciona o frete como um "item" para a InfinitePay
-                // Isso garante que o valor total bata com o valor cobrado
+                // 3. Adicionar Frete
                 if ($freteValor > 0) {
-                    $total += $freteValor; // Soma ao total do banco
-
+                    $total += $freteValor;
                     $items_para_infinitepay[] = [
                         'name' => "Frete: $freteNome",
-                        'price' => (int) ($freteValor * 100), // Centavos
+                        'price' => (int) ($freteValor * 100),
                         'quantity' => 1,
                     ];
                 }
 
-                // --- 3. CRIAR O PEDIDO ---
+                // 4. Aplicar Cupom (NOVO)
+                if ($dadosCupom) {
+                    $desconto = $dadosCupom['desconto_calculado'];
+                    $total -= $desconto; // Subtrai do total do pedido
+
+                    // Garante que o total não fique negativo
+                    if ($total < 0) $total = 0;
+
+                    // Adiciona item negativo para a InfinitePay entender o desconto
+                    $items_para_infinitepay[] = [
+                        'name' => "Desconto: " . $dadosCupom['codigo'],
+                        'price' => (int) (-$desconto * 100), // Valor negativo em centavos
+                        'quantity' => 1,
+                    ];
+                }
+
+                // 5. Criar Pedido
                 $pedido = Pedido::create([
                     'user_id' => $user->id,
                     'total' => $total,
                     'status' => 'aguardando_pagamento',
                 ]);
 
-                // --- 4. ASSOCIAR PRODUTOS (SEM DECREMENTAR ESTOQUE) ---
+                // 6. Associar Produtos
                 foreach ($cart as $variacao_id => $details) {
                     $pedido->produtos()->attach($details['produto_id'], [
                         'produto_variacao_id' => $variacao_id,
                         'quantidade' => $details['quantidade'],
                         'preco' => $details['preco']
                     ]);
-                    
-                    // A LINHA DE DECREMENT FOI REMOVIDA DAQUI
                 }
             });
 
@@ -91,10 +108,11 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('error', $e->getMessage());
         }
 
-        // --- 5. LIMPAR O CARRINHO ---
+        // Limpar Carrinho e Cupom
         $request->session()->forget('cart');
+        $request->session()->forget('cupom'); // Importante: limpar o cupom usado
 
-        // --- 6. MONTAR A URL DE PAGAMENTO ---
+        // Montar URL InfinitePay
         $infinitepay_handle = 'guilhermecfrancellino'; 
         $params = [
             'handle' => $infinitepay_handle,
@@ -107,7 +125,6 @@ class CheckoutController extends Controller
         $query_string = http_build_query($params);
         $infinitepay_url = "https://checkout.infinitepay.io/{$infinitepay_handle}?{$query_string}";
 
-        // --- 7. REDIRECIONAR O USUÁRIO ---
         return redirect()->away($infinitepay_url);
     }
 

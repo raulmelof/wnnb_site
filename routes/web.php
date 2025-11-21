@@ -38,6 +38,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/carrinho/remover/{variacao_id}', [CartController::class, 'remove'])->name('cart.remove');
     Route::patch('/carrinho/atualizar/{variacao_id}', [CartController::class, 'update'])->name('cart.update');
 
+    Route::post('/carrinho/calcular-frete', [CartController::class, 'calcularFrete'])->name('cart.frete');
+
+    Route::post('/carrinho/aplicar-cupom', [CartController::class, 'aplicarCupom'])->name('cart.cupom.aplicar');
+    Route::post('/carrinho/remover-cupom', [CartController::class, 'removerCupom'])->name('cart.cupom.remover');
+
     Route::prefix('meus-pedidos')->name('meus-pedidos.')->group(function () {
         Route::get('/', [PedidoController::class, 'index'])->name('index');
         Route::get('/{pedido}', [PedidoController::class, 'show'])->name('show');

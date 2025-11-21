@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Produto;
 use App\Models\ProdutoVariacao;
+use App\Models\Cupom;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use App\Services\CorreiosService;
 
 class CartController extends Controller
@@ -204,5 +206,69 @@ class CartController extends Controller
         return response()->json([
             'opcoes' => $opcoesDeFrete
         ]);
+    }
+
+    /**
+     * Aplica o cupom de desconto e salva na sessão.
+     */
+    public function aplicarCupom(Request $request)
+    {
+        $request->validate([
+            'codigo' => 'required|string',
+        ]);
+
+        $codigo = strtoupper($request->codigo);
+        $cupom = Cupom::where('codigo', $codigo)->first();
+
+        if (!$cupom) {
+            return response()->json(['erro' => 'Cupom não encontrado.'], 404);
+        }
+
+        if (!$cupom->estaValido()) {
+            return response()->json(['erro' => 'Este cupom expirou ou atingiu o limite de uso.'], 400);
+        }
+
+        // Calcula o total do carrinho para aplicar o desconto
+        $cart = session('cart', []);
+        $totalProdutos = 0;
+        foreach ($cart as $item) {
+            $totalProdutos += $item['preco'] * $item['quantidade'];
+        }
+
+        // Calcula o valor do desconto
+        $valorDesconto = 0;
+        if ($cupom->tipo == 'percentual') {
+            $valorDesconto = $totalProdutos * ($cupom->valor / 100);
+        } else {
+            $valorDesconto = $cupom->valor;
+        }
+
+        // Garante que o desconto não seja maior que o total
+        if ($valorDesconto > $totalProdutos) {
+            $valorDesconto = $totalProdutos;
+        }
+
+        // Salva na sessão
+        session()->put('cupom', [
+            'codigo' => $cupom->codigo,
+            'tipo' => $cupom->tipo,
+            'valor_original' => $cupom->valor, // Ex: 10 (se for %) ou 10.00 (se for fixo)
+            'desconto_calculado' => $valorDesconto // O valor real em R$ a subtrair
+        ]);
+
+        return response()->json([
+            'sucesso' => 'Cupom aplicado com sucesso!',
+            'codigo' => $cupom->codigo,
+            'desconto' => $valorDesconto
+        ]);
+    }
+
+    /**
+     * Remove o cupom da sessão.
+     */
+    public function removerCupom()
+    {
+        session()->forget('cupom');
+        return response()->json(['sucesso' => 'Cupom removido.']);
     }
 }
