@@ -50,6 +50,10 @@ class ProdutoController extends Controller
             'variacoes' => 'required|array|min:1', // Deve ter pelo menos uma variação
             'variacoes.*.tamanho' => 'required|string|max:50', // Valida cada item do array
             'variacoes.*.estoque' => 'required|integer|min:0',
+            'peso' => 'required|numeric|min:0.001',
+            'altura' => 'required|integer|min:1',
+            'largura' => 'required|integer|min:1',
+            'comprimento' => 'required|integer|min:1',
         ]);
 
         $data = $request->except('imagem', 'variacoes'); // Pega dados do produto
@@ -121,6 +125,10 @@ class ProdutoController extends Controller
             'variacoes' => 'required|array|min:1',
             'variacoes.*.tamanho' => 'required|string|max:50',
             'variacoes.*.estoque' => 'required|integer|min:0',
+            'peso' => 'required|numeric|min:0.001',
+            'altura' => 'required|integer|min:1',
+            'largura' => 'required|integer|min:1',
+            'comprimento' => 'required|integer|min:1',
         ]);
 
         $data = $request->except('imagem', 'variacoes');
