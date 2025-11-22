@@ -33,6 +33,7 @@ class Pedido extends Model
     // Define que um Pedido PERTENCE A MUITOS Produtos (através da tabela pivot 'pedido_produtos')
     public function produtos()
     {
-        return $this->belongsToMany(Produto::class, 'pedido_produtos')->withPivot('quantidade', 'preco');
+        return $this->belongsToMany(Produto::class, 'pedido_produtos')
+                    ->withPivot('quantidade', 'preco', 'produto_variacao_id');
     }
 }
