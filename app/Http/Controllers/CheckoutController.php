@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Exception;
+use App\Mail\PagamentoAprovado;
 
 class CheckoutController extends Controller
 {
@@ -230,6 +231,13 @@ class CheckoutController extends Controller
                     $pedido->update(['status' => 'falhou']);
                     // TODO: Notificar o administrador sobre o erro de oversell
                     return redirect()->route('home')->with('error', 'Pagamento aprovado, mas falha ao reservar estoque. Contate o suporte.');
+                }
+
+                try {
+                    \Illuminate\Support\Facades\Mail::to($pedido->user->email)
+                        ->send(new PagamentoAprovado($pedido));
+                } catch (\Exception $e) {
+                    // Log erro de e-mail
                 }
 
                 // Redireciona para o sucesso

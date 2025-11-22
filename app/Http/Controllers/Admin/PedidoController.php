@@ -34,20 +34,20 @@ class PedidoController extends Controller
     {
         $dados = $request->validate([
             'status' => 'required|in:pago,aguardando_pagamento,enviado,cancelado,falhou',
-            'codigo_rastreio' => 'nullable|string|max:50', // Novo campo
+            'codigo_rastreio' => 'nullable|string|max:50',
         ]);
 
-        // Verifica se o status está mudando para 'enviado' AGORA
         $mudouParaEnviado = ($pedido->status !== 'enviado' && $dados['status'] === 'enviado');
 
         $pedido->update($dados);
+        
+        $pedido->refresh();
 
-        // Dispara e-mail se acabou de ser enviado
         if ($mudouParaEnviado) {
             try {
                 Mail::to($pedido->user->email)->send(new PedidoEnviado($pedido));
             } catch (\Exception $e) {
-                // Log erro de e-mail, mas não trava o admin
+                // Log erro
             }
         }
 

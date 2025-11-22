@@ -21,7 +21,8 @@ class Pedido extends Model
         'endereco_complemento', 
         'endereco_bairro', 
         'endereco_cidade', 
-        'endereco_estado'
+        'endereco_estado',
+        'codigo_rastreio'
     ];
 
     // Define que um Pedido PERTENCE A um Usuário
