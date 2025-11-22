@@ -121,6 +121,12 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('error', $e->getMessage());
         }
 
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PedidoRealizado($pedido));
+        } catch (\Exception $e) {
+            // Falha silenciosa para não travar a venda
+        }
+
         // Limpar Carrinho e Cupom
         $request->session()->forget('cart');
         $request->session()->forget('cupom'); // Importante: limpar o cupom usado
