@@ -75,6 +75,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::resource('cupons', App\Http\Controllers\Admin\CupomController::class)
      ->parameters(['cupons' => 'cupom']);
+
+     // Rota para imprimir etiqueta
+    Route::get('/pedidos/{pedido}/etiqueta', [AdminPedidoController::class, 'imprimirEtiqueta'])
+         ->name('pedidos.etiqueta');
 });
 
 // Arquivo que contém as rotas de login, registro, logout, etc.

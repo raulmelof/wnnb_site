@@ -16,34 +16,37 @@
         {{-- COLUNA DA ESQUERDA: Detalhes do Pedido e Itens --}}
         <div class="col-md-8">
             
-            {{-- Card de Status --}}
+            {{-- Card de Status e Rastreio --}}
             <div class="card mb-4">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0">Status do Pedido</h5>
+                    <h5 class="mb-0">Gerenciar Envio</h5>
                 </div>
-                <div class="card-body d-flex align-items-center justify-content-between">
-                    <div>
-                        Atual: 
-                        @switch($pedido->status)
-                            @case('pago') <span class="badge bg-success fs-6">PAGO</span> @break
-                            @case('aguardando_pagamento') <span class="badge bg-warning text-dark fs-6">AGUARDANDO PAGAMENTO</span> @break
-                            @case('enviado') <span class="badge bg-primary fs-6">ENVIADO</span> @break
-                            @case('cancelado') <span class="badge bg-danger fs-6">CANCELADO</span> @break
-                            @case('falhou') <span class="badge bg-danger fs-6">FALHOU</span> @break
-                            @default <span class="badge bg-secondary fs-6">{{ $pedido->status }}</span>
-                        @endswitch
-                    </div>
-
-                    {{-- Formulário para Mudar Status --}}
-                    <form action="{{ route('admin.pedidos.update', $pedido->id) }}" method="POST" class="d-flex gap-2">
+                <div class="card-body">
+                    <form action="{{ route('admin.pedidos.update', $pedido->id) }}" method="POST">
                         @csrf
                         @method('PUT')
-                        <select name="status" class="form-select form-select-sm" style="width: 150px;">
-                            <option value="pago" {{ $pedido->status == 'pago' ? 'selected' : '' }}>Pago</option>
-                            <option value="enviado" {{ $pedido->status == 'enviado' ? 'selected' : '' }}>Enviado</option>
-                            <option value="cancelado" {{ $pedido->status == 'cancelado' ? 'selected' : '' }}>Cancelado</option>
-                        </select>
-                        <button type="submit" class="btn btn-sm btn-outline-primary">Atualizar</button>
+                        
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label small">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="pago" {{ $pedido->status == 'pago' ? 'selected' : '' }}>Pago (Separar)</option>
+                                    <option value="enviado" {{ $pedido->status == 'enviado' ? 'selected' : '' }}>Enviado</option>
+                                    <option value="cancelado" {{ $pedido->status == 'cancelado' ? 'selected' : '' }}>Cancelado</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-5">
+                                <label class="form-label small">Código de Rastreio</label>
+                                <input type="text" name="codigo_rastreio" class="form-control" 
+                                       placeholder="Ex: OJ123456BR" 
+                                       value="{{ $pedido->codigo_rastreio }}">
+                            </div>
+
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-primary w-100">Salvar</button>
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -110,6 +113,10 @@
                             {{ $pedido->endereco_cidade }} - {{ $pedido->endereco_estado }}<br>
                             CEP: {{ $pedido->endereco_cep }}
                         </address>
+                        <div class="mt-3 d-grid gap-2">
+                        <a href="{{ route('admin.pedidos.etiqueta', $pedido->id) }}" target="_blank" class="btn btn-dark">
+                            <i class="fas fa-print"></i> Imprimir Etiqueta
+                        </a>
                         <div class="mt-3 d-grid">
                             <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($pedido->endereco_rua . ', ' . $pedido->endereco_numero . ' - ' . $pedido->endereco_cidade) }}" target="_blank" class="btn btn-outline-secondary btn-sm">
                                 <i class="fas fa-map-marker-alt"></i> Ver no Maps

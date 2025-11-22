@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Pedido;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\PedidoEnviado;
 
 class PedidoController extends Controller
 {
@@ -30,16 +32,31 @@ class PedidoController extends Controller
      */
     public function update(Request $request, Pedido $pedido)
     {
-        // Valida se o status enviado é um dos valores permitidos
-        $request->validate([
-            'status' => 'required|in:pendente,pago,enviado,cancelado'
+        $dados = $request->validate([
+            'status' => 'required|in:pago,aguardando_pagamento,enviado,cancelado,falhou',
+            'codigo_rastreio' => 'nullable|string|max:50', // Novo campo
         ]);
 
-        // Atualiza o status do pedido
-        $pedido->status = $request->input('status');
-        $pedido->save();
+        // Verifica se o status está mudando para 'enviado' AGORA
+        $mudouParaEnviado = ($pedido->status !== 'enviado' && $dados['status'] === 'enviado');
 
-        // Redireciona de volta para a página de detalhes com uma mensagem de sucesso
-        return redirect()->route('admin.pedidos.show', $pedido->id)->with('success', 'Status do pedido atualizado!');
+        $pedido->update($dados);
+
+        // Dispara e-mail se acabou de ser enviado
+        if ($mudouParaEnviado) {
+            try {
+                Mail::to($pedido->user->email)->send(new PedidoEnviado($pedido));
+            } catch (\Exception $e) {
+                // Log erro de e-mail, mas não trava o admin
+            }
+        }
+
+        return redirect()->route('admin.pedidos.show', $pedido->id)
+                         ->with('success', 'Pedido atualizado com sucesso!');
+    }
+
+    public function imprimirEtiqueta(Pedido $pedido)
+    {
+        return view('admin.pedidos.etiqueta', ['pedido' => $pedido]);
     }
 }
