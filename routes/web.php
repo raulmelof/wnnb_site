@@ -48,9 +48,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/{pedido}', [PedidoController::class, 'show'])->name('show');
     });
 
-    // Rota que o botão "Finalizar Compra" do carrinho irá chamar
-    Route::post('/checkout/iniciar', [CheckoutController::class, 'iniciarPagamento'])
-         ->name('checkout.iniciar');
+     // Página de Checkout (Formulário) - Aceita POST pq vem do carrinho
+     Route::any('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+
+     // Processar Pagamento (Vem do formulário de checkout)
+     Route::post('/checkout/processar', [CheckoutController::class, 'iniciarPagamento'])->name('checkout.processar');
 
     // Rota de callback (a 'redirect_url' que configuramos na InfinitePay)
     // Usamos GET pois o usuário é redirecionado pelo navegador

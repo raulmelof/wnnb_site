@@ -20,15 +20,23 @@ class CheckoutController extends Controller
      */
     public function iniciarPagamento(Request $request)
     {
+        // 1. Validação do Endereço
+        $request->validate([
+            'cep' => 'required|size:9', // Com traço
+            'rua' => 'required|string|max:255',
+            'numero' => 'required|string|max:20',
+            'bairro' => 'required|string|max:255',
+            'cidade' => 'required|string|max:255',
+            'estado' => 'required|size:2',
+        ]);
+
         $cart = $request->session()->get('cart', []);
         $user = Auth::user();
         
-        // Dados do Frete
+        // Dados do Frete e Cupom (Vêm do formulário do checkout agora)
         $freteNome = $request->input('frete_tipo');
         $freteValor = (float) $request->input('frete_valor', 0);
-        
-        // Dados do Cupom (Pegamos da sessão, pois é mais seguro)
-        $dadosCupom = session('cupom'); // Pode ser null
+        $dadosCupom = session('cupom');
 
         if (empty($cart)) {
             return redirect()->route('cart.index')->with('error', 'Seu carrinho está vazio.');
@@ -39,7 +47,7 @@ class CheckoutController extends Controller
         $items_para_infinitepay = [];
 
         try {
-            DB::transaction(function () use ($cart, $user, &$pedido, &$total, &$items_para_infinitepay, $freteValor, $freteNome, $dadosCupom) {
+            DB::transaction(function () use ($cart, $user, &$pedido, &$total, &$items_para_infinitepay, $freteValor, $freteNome, $dadosCupom, $request) {
                 
                 // 1. Verificar Estoque
                 foreach ($cart as $variacao_id => $details) {
@@ -71,27 +79,32 @@ class CheckoutController extends Controller
                     ];
                 }
 
-                // 4. Aplicar Cupom (NOVO)
+                // 4. Aplicar Cupom
                 if ($dadosCupom) {
                     $desconto = $dadosCupom['desconto_calculado'];
-                    $total -= $desconto; // Subtrai do total do pedido
-
-                    // Garante que o total não fique negativo
+                    $total -= $desconto;
                     if ($total < 0) $total = 0;
 
-                    // Adiciona item negativo para a InfinitePay entender o desconto
                     $items_para_infinitepay[] = [
                         'name' => "Desconto: " . $dadosCupom['codigo'],
-                        'price' => (int) (-$desconto * 100), // Valor negativo em centavos
+                        'price' => (int) (-$desconto * 100),
                         'quantity' => 1,
                     ];
                 }
 
-                // 5. Criar Pedido
+                // 5. Criar Pedido COM ENDEREÇO
                 $pedido = Pedido::create([
                     'user_id' => $user->id,
                     'total' => $total,
                     'status' => 'aguardando_pagamento',
+                    // Novos Campos:
+                    'endereco_cep' => $request->cep,
+                    'endereco_rua' => $request->rua,
+                    'endereco_numero' => $request->numero,
+                    'endereco_complemento' => $request->complemento,
+                    'endereco_bairro' => $request->bairro,
+                    'endereco_cidade' => $request->cidade,
+                    'endereco_estado' => $request->estado,
                 ]);
 
                 // 6. Associar Produtos
@@ -240,5 +253,43 @@ class CheckoutController extends Controller
         }
 
         return view('checkout.sucesso', ['pedido' => $pedido]);
+    }
+
+    public function index(Request $request)
+    {
+        $cart = session('cart', []);
+        if (empty($cart)) {
+            return redirect()->route('cart.index');
+        }
+
+        // Recebe os dados do frete que vieram do Carrinho
+        $freteTipo = $request->input('frete_tipo');
+        $freteValor = (float) $request->input('frete_valor', 0);
+        
+        // Se o usuário tentou pular a etapa do frete, manda voltar
+        if ($freteValor <= 0 && $freteTipo != 'A Combinar / Uber Flash / Retirada') {
+             return redirect()->route('cart.index')->with('error', 'Por favor, selecione um frete.');
+        }
+
+        // Calcula totais para exibir no resumo
+        $subtotal = 0;
+        foreach ($cart as $item) {
+            $subtotal += $item['preco'] * $item['quantidade'];
+        }
+
+        $cupomData = session('cupom');
+        $desconto = $cupomData ? $cupomData['desconto_calculado'] : 0;
+        
+        $total = $subtotal + $freteValor - $desconto;
+        if ($total < 0) $total = 0;
+
+        return view('checkout.index', [
+            'cart' => $cart,
+            'subtotal' => $subtotal,
+            'freteTipo' => $freteTipo,
+            'freteValor' => $freteValor,
+            'desconto' => $desconto,
+            'total' => $total
+        ]);
     }
 }

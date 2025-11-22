@@ -105,7 +105,7 @@
 
             {{-- BOTÃO DE CHECKOUT --}}
             <div class="text-end mt-4 mb-5">
-                <form action="{{ route('checkout.iniciar') }}" method="POST" id="form-checkout">
+                <form action="{{ route('checkout.index') }}" method="POST" id="form-checkout">
                     @csrf
                     {{-- Inputs escondidos que o JS vai preencher --}}
                     <input type="hidden" name="frete_tipo" id="input-frete-tipo">
